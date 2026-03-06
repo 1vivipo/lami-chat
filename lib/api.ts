@@ -549,6 +549,236 @@ export const storageApi = {
   },
 };
 
+// Group API
+export const groupApi = {
+  // Create group
+  createGroup: async (ownerId: string, name: string, memberIds: string[]) => {
+    // Create group
+    const { data: group, error: groupError } = await supabase
+      .from('groups')
+      .insert({
+        name,
+        owner_id: ownerId,
+        member_count: memberIds.length + 1,
+      })
+      .select()
+      .single();
+    
+    if (groupError) throw groupError;
+
+    // Add owner as member
+    await supabase
+      .from('group_members')
+      .insert({
+        group_id: group.id,
+        user_id: ownerId,
+        role: 'owner',
+      });
+
+    // Add other members
+    if (memberIds.length > 0) {
+      await supabase
+        .from('group_members')
+        .insert(
+          memberIds.map(id => ({
+            group_id: group.id,
+            user_id: id,
+            role: 'member',
+          }))
+        );
+    }
+
+    // Create conversation for group
+    const { data: conversation, error: convError } = await supabase
+      .from('conversations')
+      .insert({
+        type: 'group',
+        group_id: group.id,
+      })
+      .select()
+      .single();
+
+    if (convError) throw convError;
+
+    // Add all members as conversation participants
+    await supabase
+      .from('conversation_participants')
+      .insert([
+        { conversation_id: conversation.id, user_id: ownerId },
+        ...memberIds.map(id => ({ conversation_id: conversation.id, user_id: id })),
+      ]);
+
+    return { group, conversation };
+  },
+
+  // Get group info
+  getGroup: async (groupId: string) => {
+    const { data, error } = await supabase
+      .from('groups')
+      .select(`
+        *,
+        owner:users!groups_owner_id_fkey(id, account, nickname, avatar_url)
+      `)
+      .eq('id', groupId)
+      .single();
+    if (error) throw error;
+    return data;
+  },
+
+  // Get group members
+  getGroupMembers: async (groupId: string) => {
+    const { data, error } = await supabase
+      .from('group_members')
+      .select(`
+        *,
+        user:users(id, account, nickname, avatar_url)
+      `)
+      .eq('group_id', groupId)
+      .order('joined_at', { ascending: true });
+    if (error) throw error;
+    return data;
+  },
+
+  // Update group info
+  updateGroup: async (groupId: string, updates: Partial<{
+    name: string;
+    avatar_url: string;
+    announcement: string;
+  }>) => {
+    const { data, error } = await supabase
+      .from('groups')
+      .update(updates)
+      .eq('id', groupId)
+      .select()
+      .single();
+    if (error) throw error;
+    return data;
+  },
+
+  // Add member to group
+  addMember: async (groupId: string, userId: string) => {
+    const { error } = await supabase
+      .from('group_members')
+      .insert({
+        group_id: groupId,
+        user_id: userId,
+        role: 'member',
+      });
+    if (error) throw error;
+
+    // Update member count
+    await supabase.rpc('increment_member_count', { group_id: groupId });
+  },
+
+  // Remove member from group
+  removeMember: async (groupId: string, userId: string) => {
+    const { error } = await supabase
+      .from('group_members')
+      .delete()
+      .eq('group_id', groupId)
+      .eq('user_id', userId);
+    if (error) throw error;
+
+    // Update member count
+    await supabase.rpc('decrement_member_count', { group_id: groupId });
+  },
+
+  // Set admin
+  setAdmin: async (groupId: string, userId: string, isAdmin: boolean) => {
+    const { error } = await supabase
+      .from('group_members')
+      .update({ role: isAdmin ? 'admin' : 'member' })
+      .eq('group_id', groupId)
+      .eq('user_id', userId);
+    if (error) throw error;
+  },
+
+  // Transfer owner
+  transferOwner: async (groupId: string, newOwnerId: string, currentOwnerId: string) => {
+    // Update new owner
+    await supabase
+      .from('group_members')
+      .update({ role: 'owner' })
+      .eq('group_id', groupId)
+      .eq('user_id', newOwnerId);
+
+    // Update old owner to admin
+    await supabase
+      .from('group_members')
+      .update({ role: 'admin' })
+      .eq('group_id', groupId)
+      .eq('user_id', currentOwnerId);
+
+    // Update group owner
+    await supabase
+      .from('groups')
+      .update({ owner_id: newOwnerId })
+      .eq('id', groupId);
+  },
+
+  // Leave group
+  leaveGroup: async (groupId: string, userId: string) => {
+    await groupApi.removeMember(groupId, userId);
+  },
+
+  // Dissolve group
+  dissolveGroup: async (groupId: string) => {
+    // Delete all members
+    await supabase
+      .from('group_members')
+      .delete()
+      .eq('group_id', groupId);
+
+    // Delete group
+    await supabase
+      .from('groups')
+      .delete()
+      .eq('id', groupId);
+  },
+
+  // Get user's role in group
+  getUserRole: async (groupId: string, userId: string) => {
+    const { data, error } = await supabase
+      .from('group_members')
+      .select('role')
+      .eq('group_id', groupId)
+      .eq('user_id', userId)
+      .single();
+    if (error) {
+      if (error.code === 'PGRST116') return null;
+      throw error;
+    }
+    return data.role;
+  },
+};
+
+// Network utility for China mainland adaptation
+export const networkApi = {
+  // Check connection status
+  checkConnection: async (): Promise<boolean> => {
+    try {
+      const { error } = await supabase.from('users').select('id').limit(1);
+      return !error;
+    } catch {
+      return false;
+    }
+  },
+
+  // Retry wrapper
+  retry: async <T>(fn: () => Promise<T>, maxRetries = 3): Promise<T> => {
+    let lastError: any;
+    for (let i = 0; i < maxRetries; i++) {
+      try {
+        return await fn();
+      } catch (error) {
+        lastError = error;
+        await new Promise(resolve => setTimeout(resolve, 1000 * (i + 1)));
+      }
+    }
+    throw lastError;
+  },
+};
+
 // Generate unique account
 export const generateUniqueAccount = async (): Promise<string> => {
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
