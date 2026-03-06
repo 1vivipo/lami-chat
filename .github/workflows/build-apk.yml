@@ -3,8 +3,6 @@ name: Build Android APK
 on:
   push:
     branches: [ main, master ]
-  pull_request:
-    branches: [ main, master ]
   workflow_dispatch:
 
 jobs:
@@ -22,7 +20,7 @@ jobs:
           node-version: '20'
 
       - name: Setup Java
-        uses: actions/setup-java@v4
+        uses: android-actions/setup-java@v4
         with:
           distribution: 'temurin'
           java-version: '17'
@@ -35,41 +33,47 @@ jobs:
           npm install -g bun
           bun install
 
-      - name: Setup EAS
-        uses: expo/expo-github-action@v8
-        with:
-          eas-version: latest
-          token: ${{ secrets.EXPO_TOKEN }}
+      - name: Generate native Android project
+        run: npx expo prebuild --platform android
 
-      - name: Build APK
+      - name: Build Debug APK
         run: |
-          eas build --platform android --profile preview --local --output ./lami-chat.apk
-        env:
-          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+          cd android
+          chmod +x gradlew
+          ./gradlew assembleDebug
+
+      - name: Rename APK
+        run: mv android/app/build/outputs/apk/debug/app-debug.apk lami-chat.apk
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: lami-chat-apk
-          path: ./lami-chat.apk
+          path: lami-chat.apk
           retention-days: 30
 
       - name: Create Release
-        if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
         uses: softprops/action-gh-release@v1
         with:
           tag_name: v1.0.${{ github.run_number }}
           name: Lami Chat v1.0.${{ github.run_number }}
-          files: ./lami-chat.apk
+          files: lami-chat.apk
           body: |
             ## Lami Chat Release
             
             ### 下载
-            - [lami-chat.apk](./lami-chat.apk)
+            下载下方的 APK 文件安装即可
             
             ### 安装说明
             1. 下载 APK 文件
             2. 在手机上打开并允许安装未知来源应用
             3. 按照提示完成安装
+            
+            ### 测试账号
+            | 账号 | 密码 |
+            |------|------|
+            | TEST01 | Test123456 |
+            | TEST02 | Test123456 |
+            | TEST03 | Test123456 |
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
