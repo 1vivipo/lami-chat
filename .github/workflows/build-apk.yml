@@ -30,26 +30,19 @@ jobs:
 
       - name: Install dependencies
         run: |
-          npm install -g bun
+          npm install -g bun eas-cli
           bun install
 
-      - name: Generate native Android project
-        run: npx expo prebuild --platform android
-
-      - name: Build Debug APK
-        run: |
-          cd android
-          chmod +x gradlew
-          ./gradlew assembleDebug
-
-      - name: Rename APK
-        run: mv android/app/build/outputs/apk/debug/app-debug.apk lami-chat.apk
+      - name: Build APK with EAS
+        run: eas build --platform android --profile preview --local --output ./lami-chat.apk --non-interactive
+        env:
+          EXPO_TOKEN: 7rlnN8DnBXZ57TftXkOibKDy8mQRZLvrmW13-8BF
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: lami-chat-apk
-          path: lami-chat.apk
+          path: ./lami-chat.apk
           retention-days: 30
 
       - name: Create Release
@@ -57,7 +50,7 @@ jobs:
         with:
           tag_name: v1.0.${{ github.run_number }}
           name: Lami Chat v1.0.${{ github.run_number }}
-          files: lami-chat.apk
+          files: ./lami-chat.apk
           body: |
             ## Lami Chat Release
             

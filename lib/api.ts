@@ -343,6 +343,7 @@ export const conversationApi = {
         conversations(
           id,
           type,
+          group_id,
           updated_at
         )
       `)
@@ -351,10 +352,44 @@ export const conversationApi = {
     
     if (error) throw error;
 
-    // For each conversation, get the other participant and last message
+    // For each conversation, get the other participant/group info and last message
     const conversations = await Promise.all(
       data.map(async (cp: any) => {
-        // Get other participant
+        const conv = cp.conversations;
+        
+        // Get last message with sender info
+        const { data: lastMessage } = await supabase
+          .from('messages')
+          .select(`
+            *,
+            sender:users(id, account, nickname, avatar_url)
+          `)
+          .eq('conversation_id', cp.conversation_id)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .single();
+
+        // Handle group conversation
+        if (conv.type === 'group' && conv.group_id) {
+          const { data: group } = await supabase
+            .from('groups')
+            .select('id, name, avatar_url, member_count')
+            .eq('id', conv.group_id)
+            .single();
+
+          return {
+            id: conv.id,
+            type: conv.type,
+            group_id: conv.group_id,
+            group_name: group?.name,
+            group_avatar: group?.avatar_url,
+            member_count: group?.member_count,
+            updated_at: conv.updated_at,
+            last_message: lastMessage,
+          };
+        }
+
+        // Handle private conversation
         const { data: participants } = await supabase
           .from('conversation_participants')
           .select(`
@@ -365,26 +400,20 @@ export const conversationApi = {
           .neq('user_id', userId)
           .single();
 
-        // Get last message
-        const { data: lastMessage } = await supabase
-          .from('messages')
-          .select('*')
-          .eq('conversation_id', cp.conversation_id)
-          .order('created_at', { ascending: false })
-          .limit(1)
-          .single();
-
         return {
-          id: cp.conversations.id,
-          type: cp.conversations.type,
-          updated_at: cp.conversations.updated_at,
+          id: conv.id,
+          type: conv.type,
+          updated_at: conv.updated_at,
           other_user: participants?.users,
           last_message: lastMessage,
         };
       })
     );
 
-    return conversations;
+    // Sort by updated_at
+    return conversations.sort((a, b) => 
+      new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
+    );
   },
 
   // Get or create conversation with another user

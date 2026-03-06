@@ -15,7 +15,7 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useColorScheme } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore, useChatStore } from '@/store';
-import { messageApi, conversationApi, userApi } from '@/lib/api';
+import { messageApi, conversationApi, groupApi } from '@/lib/api';
 import { Colors, Spacing, FontSize, BorderRadius } from '@/constants/theme';
 import { Message } from '@/types';
 
@@ -31,17 +31,18 @@ export default function ChatDetailScreen() {
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [otherUser, setOtherUser] = useState<any>(null);
+  const [groupInfo, setGroupInfo] = useState<any>(null);
+  const [isGroup, setIsGroup] = useState(false);
   const flatListRef = useRef<FlatList>(null);
 
   useEffect(() => {
-    loadMessages();
-    loadConversationInfo();
-
+    loadChatData();
+    
     // Subscribe to new messages
     const subscription = messageApi.subscribeToMessages(id, (message) => {
       if (message.sender_id !== user?.id) {
-        addMessage(message as Message);
-        scrollToBottom();
+        // Fetch sender info for the message
+        fetchSenderInfo(message);
       }
     });
 
@@ -51,36 +52,69 @@ export default function ChatDetailScreen() {
     };
   }, [id]);
 
-  const loadMessages = async () => {
+  const fetchSenderInfo = async (message: any) => {
     try {
+      const { data } = await supabase
+        .from('users')
+        .select('id, account, nickname, avatar_url')
+        .eq('id', message.sender_id)
+        .single();
+      
+      const fullMessage = {
+        ...message,
+        sender: data,
+      };
+      addMessage(fullMessage as Message);
+      scrollToBottom();
+    } catch (error) {
+      console.error('Fetch sender error:', error);
+    }
+  };
+
+  const loadChatData = async () => {
+    try {
+      // Get conversation info
+      const convResponse = await fetch(
+        `https://uxpzbwjqfnwvxjllcadj.supabase.co/rest/v1/conversations?id=eq.${id}&select=type,group_id`,
+        {
+          headers: {
+            'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV4cHpid2pxZmb53dnhqbGxjYWRqIiwicm9sZSI6InNlcnZpb3MiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV4cHpid2pxZmb53dnhqbGxjYWRqIiwicm9sZSI6InNlcnZpb3MiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZsIsInJlZiI6InV4cHpid2pxZmb53dnhqbGxjYWRqIiwicm9sZSI6InNlcnZpb3MiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZsIsInJlZiI6InV4cHpid2pxZmb53dnhqbGxjYWRqIiwicm9sZSI6InNlcnZpb3MiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZsIsInJlZiI6InV4cHpid2pxZmb53dnhqbGxjYWRqIiwicm9sZSI6InNlcnZpb3MiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZsIsInJlZiI6InV4cHpid2pxZmb53dnhqbGxjYWRqIiwicm9sZSI6InNlcnZpb3MiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZsIsInJlZiI6InV4cHpid2pxZmb53dnhqbGxjYWRqIiwicm9sZSI6InNlcnZpb3MiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZsIsInJlZiI6InV4cHpid2pxZmb53dnhqbGxjYWRqIiwicm9sZSI6InNlcnZpb3MiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZsIsInJlZiI6InV4cHpid2pxZmb53dnhqbGxjYWRqIiwicm9sZSI6InNlcnZpb3MiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZsIsInJlZiI6InV4cHpid2pxZmb53dnhqbGxjYWRqIiwicm9sZSI6InNlcnZpb3MiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZsIsInJlZiI6InV4cHpid2pxZmb53dnhqbGxjYWRqIiwicm9sZSI6InNlcnZpb3MiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZsIsInJlZiI6InV4cHpid2pxZmb53dnhqbGxjYWRqIiwicm9sZSI6InNlcnZpb3MiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZsIsInJlZiI6InV4cHpid2pxZmb53dnhqbGxjYWRqIiwicm9sZSI6InNlcnZpb3MiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZsIsInJlZiI6InV4cHpid2pxZmb53dnhqbGxjYWRqIiwicm9sZSI6InNlcnZpb3MiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZsIsInJlZiI6InV4cHpid2pxZmb53dnhqbGxjYWRqIiwicm9sZSI6InNlcnZpb3MiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZsIsInJlZiI6InV4cHpid2pxZmb53dnhqbGxjYWRqIiwicm9sZSI6InNlcnZpb3MiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZsIsInJlZiI6InV4cHpid2pxZmb53dnhqbGxjYWRqIiwicm9sZSI6InNlcnZpb3MiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZsIsInJlZiI6InV4cHpid2pxZmb53dnhqbGxjYWRqIiwicm9sZSI6InNlcnZpb3MiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZsIsInJlZiI6InV4cHpid2pxZmb53dnhqbGxjYWRqIiwicm9sZSI6InNlcnZpb3MiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZsIsInJlZiI6InV4cHpid2pxZmb53dnhqbGxjYWRqIiwicm9sZSI6InNlcnZpb3MiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZsIsInJlZiI6InV4cHpid2pxZmb53dnhqbGxjYWRqIiwicm9sZSI6InNlcnZpb3MiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZsIsInJlZiI6InV4cHpid2pxZmb53dnhqbGxjYWRqIiwicm9sZSI6InNlcnZpb3MiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZsIsInJlZiI6InV4cHpid2pxZmb53dnhqbGxjYWRqIiwicm9sZSI6InNlcnZpb3MiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZsIsInJlZiI6InV4cHpid2pxZmb53dnhqbGxjYWRqIiwicm9sZSI6InNlcnZpb3MiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZsIsInJlZiI6InV4cHpid2pxZmb53dnhqbGxjYWRqIiwicm9sZSI6InNlcnZpb3MiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZsIsInJlZiI6InV4cHpid2pxZmb53dnhqbGxjYWRqIiwicm9sZSI6InNlcnZpb3MiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZsIsInJlZiI6InV4cHpid2pxZmb53dnhqbGxjYWRqIiwicm9sZSI6InNlcnZpb3MiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZsIsInJlZiI6InV4cHpid2pxZmb53dnhqbGxjYWRqIiwicm9sZSI6InNlcnZpb3MiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZsIsInJlZiI6InV4cHpid2pxZmb53dnhqbGxjYWRqIiwicm9sZSI6InNlcnZpb3MiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZsIsInJlZiI6InV4cHpid2pxZmb53dnhqbGxjYWRqIiwicm9sZSI6InNlcnZpb3MiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZsIsInJlZiI6InV4cHpid2pxZmb53dnhqbGxjYWRqIiwicm9sZSI6InNlcnZpb3MiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZsIsInJlZiI6InV4cHpid2pxZmb53dnhqbGxjYWRqIiwicm9sZSI6InNlcnZpb3MiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZsIsInJlZiI6InV4cHpid2pxZmb53dnhqbGxjYWRqIiwicm9sZSI6InNlcnZpb3MiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZsIsInJlZiI6InV4cHpid2pxZmb53dnhqbGxjYWRqIiwicm9sZSI6InNlcnZpb3MiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZsIsInJlZiI6InV4cHpid2pxZmb53dnhqbGxjYWRqIiwicm9sZSI6InNlcnZpb3MiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZsIsInJlZiI6InV4cHpid2pxZmb53dnhqbGxjYWRqIiwicm9sZSI6InNlcnZpb3MiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZsIsInJlZiI6InV4cHpid2pxZmb53dnhqbGxjYWRqIiwicm9sZSI6InNlcnZpb3MiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZsIsInJlZiI6InV4cHpid2pxZmb53dnhqbGxjYWRqIiwicm9sZSI6InNlcnZpb3MiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZsIsInJlZiI6InV4cHpid2pxZmb53dnhqbGxjYWRqIiwicm9sZSI6InNlcnZpb3MiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZsIsInJlZiI6InV4cHpid2pxZmb53dnhqbGxjYWRqIiwicm9sZSI6InNlcnZpb3MiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV4cHpid2pxZmb53dnhqbGxjYWRqIiwicm9sZSI6InNlcnZpb3MiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV4cHpid2pxZmb53dnhqbGxjYWRqIiwicm9sZSI6InNlcnZpb3MiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV4cHpid2pxZmb53dnhqbGxjYWRqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI3OTg2ODgyLCJleHAiOjIwODgzNzQ2ODJ9.n_Q9G1x5fsR7Qo-ZyoUK8DtCP77Yk6bS3sCQGD4gndo',
+            'Authorization': `Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV4cHpid2pxZm53dnhqbGxjYWRqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI3OTg2ODgyLCJleHAiOjIwODgzNzQ2ODJ9.n_Q9G1x5fsR7Qo-ZyoUK8DtCP77Yk6bS3sCQGD4gndo`,
+          },
+        }
+      ).then(r => r.json());
+
+      const convType = convResponse[0]?.type;
+      const groupId = convResponse[0]?.group_id;
+
+      setIsGroup(convType === 'group');
+
+      if (convType === 'group' && groupId) {
+        // Load group info
+        const groupData = await groupApi.getGroup(groupId);
+        setGroupInfo(groupData);
+      } else {
+        // Get other participant for private chat
+        const { data: participants } = await supabase
+          .from('conversation_participants')
+          .select('user_id, users(id, account, nickname, avatar_url)')
+          .eq('conversation_id', id)
+          .neq('user_id', user?.id)
+          .single();
+        
+        if (participants?.users) {
+          setOtherUser(participants.users);
+        }
+      }
+
+      // Load messages
       const data = await messageApi.getMessages(id);
       setMessages(data);
       scrollToBottom();
     } catch (error) {
-      console.error('Load messages error:', error);
+      console.error('Load chat data error:', error);
     } finally {
       setLoading(false);
-    }
-  };
-
-  const loadConversationInfo = async () => {
-    try {
-      // Get other participant
-      const { data, error } = await fetch(
-        `https://uxpzbwjqfnwvxjllcadj.supabase.co/rest/v1/conversation_participants?conversation_id=eq.${id}&user_id=neq.${user?.id}&select=users(id,account,nickname,avatar_url)`,
-        {
-          headers: {
-            'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV4cHpid2pxZm53dnhqbGxjYWRqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI3OTg2ODIsImV4cCI6MjA4ODM3NDY4Mn0.n_Q9G1x5fsR7Qo-ZyoUK8DtCP77Yk6bS3sCQGD4gndo',
-            'Authorization': `Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV4cHpid2pxZm53dnhqbGxjYWRqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI3OTg2ODIsImV4cCI6MjA4ODM3NDY4Mn0.n_Q9G1x5fsR7Qo-ZyoUK8DtCP77Yk6bS3sCQGD4gndo`,
-          },
-        }
-      ).then(r => r.json());
-      
-      if (data && data[0]?.users) {
-        setOtherUser(data[0].users);
-      }
-    } catch (error) {
-      console.error('Load conversation info error:', error);
     }
   };
 
@@ -141,10 +175,10 @@ export default function ChatDetailScreen() {
             ) : (
               <Text style={{ color: '#fff', fontWeight: 'bold' }}>{user?.nickname?.charAt(0)}</Text>
             )
-          ) : otherUser?.avatar_url ? (
-            <Image source={{ uri: otherUser.avatar_url }} style={{ width: 36, height: 36, borderRadius: 18 }} />
+          ) : item.sender?.avatar_url ? (
+            <Image source={{ uri: item.sender.avatar_url }} style={{ width: 36, height: 36, borderRadius: 18 }} />
           ) : (
-            <Text style={{ color: colors.text, fontWeight: 'bold' }}>{otherUser?.nickname?.charAt(0) || '?'}</Text>
+            <Text style={{ color: colors.text, fontWeight: 'bold' }}>{item.sender?.nickname?.charAt(0) || '?'}</Text>
           )}
         </View>
 
@@ -159,6 +193,12 @@ export default function ChatDetailScreen() {
             borderBottomRightRadius: isSelf ? 4 : BorderRadius.lg,
           }}
         >
+          {/* Show sender name in group chat */}
+          {isGroup && !isSelf && item.sender && (
+            <Text style={{ color: colors.tint, fontSize: FontSize.xs, marginBottom: 4 }}>
+              {item.sender.nickname}
+            </Text>
+          )}
           <Text style={{ color: isSelf ? colors.bubbleTextSelf : colors.bubbleTextOther, fontSize: FontSize.md }}>
             {item.content}
           </Text>
@@ -206,10 +246,10 @@ export default function ChatDetailScreen() {
           <Ionicons name="arrow-back" size={24} color={colors.text} />
         </TouchableOpacity>
         <Text style={{ flex: 1, textAlign: 'center', fontSize: FontSize.lg, fontWeight: '600', color: colors.text }}>
-          {otherUser?.nickname || '聊天'}
+          {isGroup ? groupInfo?.name || otherUser?.nickname || '聊天'}
         </Text>
-        <TouchableOpacity>
-          <Ionicons name="ellipsis-vertical" size={24} color={colors.text} />
+        <TouchableOpacity onPress={() => isGroup && router.push(`/group-settings?id=${id}`)}>
+          <Ionicons name={isGroup ? 'settings-outline' : 'ellipsis-vertical'} size={24} color={colors.text} />
         </TouchableOpacity>
       </View>
 
