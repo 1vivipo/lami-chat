@@ -19,15 +19,6 @@ jobs:
         with:
           node-version: '20'
 
-      - name: Setup Java
-        uses: actions/setup-java@v4
-        with:
-          distribution: 'temurin'
-          java-version: '17'
-
-      - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
-
       - name: Install dependencies
         run: |
           npm install -g eas-cli
@@ -39,8 +30,18 @@ jobs:
           eas-version: latest
           token: 7rlnN8DnBXZ57TftXkOibKDy8mQRZLvrmW13-8BF
 
-      - name: Build APK with EAS
-        run: eas build --platform android --profile preview --local --output ./lami-chat.apk
+      - name: Build APK on EAS Cloud
+        run: eas build --platform android --profile preview --wait
+        env:
+          EXPO_TOKEN: 7rlnN8DnBXZ57TftXkOibKDy8mQRZLvrmW13-8BF
+
+      - name: Download APK
+        run: |
+          eas build:list --platform android --limit 1 --json > build.json
+          BUILD_URL=$(cat build.json | python3 -c "import sys,json; d=json.load(sys.stdin); print(d[0]['artifacts']['buildUrl'] if d else '')")
+          if [ -n "$BUILD_URL" ]; then
+            curl -L -o lami-chat.apk "$BUILD_URL"
+          fi
         env:
           EXPO_TOKEN: 7rlnN8DnBXZ57TftXkOibKDy8mQRZLvrmW13-8BF
 
