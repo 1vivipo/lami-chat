@@ -31,12 +31,7 @@ jobs:
       - name: Install dependencies
         run: |
           npm install -g eas-cli
-          bun install
-
-      - name: Configure EAS
-        run: |
-          mkdir -p ~/.eas
-          echo '{"accessToken":"7rlnN8DnBXZ57TftXkOibKDy8mQRZLvrmW13-8BF"}' > ~/.eas/easrc
+          npm install
 
       - name: Build APK with EAS
         run: |
