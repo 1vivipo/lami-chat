@@ -19,37 +19,37 @@ jobs:
         with:
           node-version: '20'
 
-      - name: Install dependencies
-        run: |
-          npm install -g eas-cli
-          npm install
-
-      - name: Setup Expo
-        uses: expo/expo-github-action@v8
+      - name: Setup Java
+        uses: actions/setup-java@v4
         with:
-          eas-version: latest
-          token: 7rlnN8DnBXZ57TftXkOibKDy8mQRZLvrmW13-8BF
+          distribution: 'temurin'
+          java-version: '17'
 
-      - name: Build APK on EAS Cloud
-        run: eas build --platform android --profile preview --wait
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Generate native Android project
+        run: npx expo prebuild --platform android --yes
         env:
-          EXPO_TOKEN: 7rlnN8DnBXZ57TftXkOibKDy8mQRZLvrmW13-8BF
+          EXPO_NO_DOTENV: 1
 
-      - name: Download APK
+      - name: Build Debug APK with Gradle
         run: |
-          eas build:list --platform android --limit 1 --json > build.json
-          BUILD_URL=$(cat build.json | python3 -c "import sys,json; d=json.load(sys.stdin); print(d[0]['artifacts']['buildUrl'] if d else '')")
-          if [ -n "$BUILD_URL" ]; then
-            curl -L -o lami-chat.apk "$BUILD_URL"
-          fi
-        env:
-          EXPO_TOKEN: 7rlnN8DnBXZ57TftXkOibKDy8mQRZLvrmW13-8BF
+          cd android
+          chmod +x gradlew
+          ./gradlew assembleDebug
+
+      - name: Rename APK
+        run: mv android/app/build/outputs/apk/debug/app-debug.apk lami-chat.apk
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: lami-chat-apk
-          path: ./lami-chat.apk
+          path: lami-chat.apk
           retention-days: 30
 
       - name: Create Release
@@ -57,7 +57,7 @@ jobs:
         with:
           tag_name: v1.0.${{ github.run_number }}
           name: Lami Chat v1.0.${{ github.run_number }}
-          files: ./lami-chat.apk
+          files: lami-chat.apk
           body: |
             ## Lami Chat Release
             
