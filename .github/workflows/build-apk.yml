@@ -31,10 +31,16 @@ jobs:
       - name: Install dependencies
         run: npm install
 
+      - name: Setup Expo
+        uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: 7rlnN8DnBXZ57TftXkOibKDy8mQRZLvrmW13-8BF
+
       - name: Generate native Android project
-        run: npx expo prebuild --platform android --yes
+        run: npx expo prebuild --platform android
         env:
-          EXPO_NO_DOTENV: 1
+          EXPO_TOKEN: 7rlnN8DnBXZ57TftXkOibKDy8mQRZLvrmW13-8BF
 
       - name: Build Debug APK with Gradle
         run: |
