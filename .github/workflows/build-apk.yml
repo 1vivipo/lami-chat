@@ -33,13 +33,16 @@ jobs:
           npm install -g eas-cli
           npm install
 
+      - name: Setup Expo
+        uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: 7rlnN8DnBXZ57TftXkOibKDy8mQRZLvrmW13-8BF
+
       - name: Build APK with EAS
-        run: |
-          eas build --platform android --profile preview --local --output ./lami-chat.apk --non-interactive
+        run: eas build --platform android --profile preview --local --output ./lami-chat.apk
         env:
           EXPO_TOKEN: 7rlnN8DnBXZ57TftXkOibKDy8mQRZLvrmW13-8BF
-          EXPO_NO_DOTENV: 1
-          EXPO_NO_INTERACTIVE: 1
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
