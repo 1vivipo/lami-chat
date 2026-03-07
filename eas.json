@@ -12,7 +12,8 @@
       "distribution": "internal",
       "android": {
         "buildType": "apk"
-      }
+      },
+      "withoutCredentials": true
     },
     "production": {
       "android": {

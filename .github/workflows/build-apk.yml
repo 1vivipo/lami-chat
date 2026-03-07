@@ -23,21 +23,15 @@ jobs:
           
       - run: npm install
       
-      - name: Trigger EAS Cloud Build
-        run: eas build --platform android --profile preview --wait
+      - name: Configure EAS project
+        run: eas build:configure --platform android --non-interactive
         env:
           EXPO_TOKEN: 7rlnN8DnBXZ57TftXkOibKDy8mQRZLvrmW13-8BF
           
-      - name: Get Build URL
-        id: build-url
-        run: |
-          BUILD_URL=$(eas build:list --platform android --limit 1 --json | jq -r '.[0].artifacts.buildUrl')
-          echo "url=$BUILD_URL" >> $GITHUB_OUTPUT
+      - name: Build APK
+        run: eas build --platform android --profile preview --local --output ./app.apk --non-interactive
         env:
           EXPO_TOKEN: 7rlnN8DnBXZ57TftXkOibKDy8mQRZLvrmW13-8BF
-          
-      - name: Download APK
-        run: curl -L -o app.apk "${{ steps.build-url.outputs.url }}"
           
       - uses: actions/upload-artifact@v4
         with:
