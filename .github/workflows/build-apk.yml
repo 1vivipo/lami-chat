@@ -9,73 +9,36 @@ jobs:
   build:
     name: Build APK
     runs-on: ubuntu-latest
-    
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/checkout@v4
+      
+      - uses: actions/setup-node@v4
         with:
-          node-version: '20'
-
-      - name: Install dependencies
-        run: npm install
-
-      - name: Setup Expo
-        uses: expo/expo-github-action@v8
+          node-version: 20
+          
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+          
+      - uses: expo/expo-github-action@v8
         with:
           eas-version: latest
           token: 7rlnN8DnBXZ57TftXkOibKDy8mQRZLvrmW13-8BF
-
-      - name: Build on EAS
-        uses: expo/eas-build@main
-        with:
-          platform: android
-          profile: preview
-          wait: true
+          
+      - run: npm install
+      
+      - run: eas build --platform android --profile preview --local --output ./app.apk
         env:
           EXPO_TOKEN: 7rlnN8DnBXZ57TftXkOibKDy8mQRZLvrmW13-8BF
-
-      - name: Download APK from EAS
-        run: |
-          npm install -g eas-cli
-          eas build:list --platform android --limit 1 --json > build_info.json
-          BUILD_URL=$(cat build_info.json | grep -o '"buildUrl":"[^"]*"' | cut -d'"' -f4)
-          echo "Build URL: $BUILD_URL"
-          curl -L -o lami-chat.apk "$BUILD_URL"
-        env:
-          EXPO_TOKEN: 7rlnN8DnBXZ57TftXkOibKDy8mQRZLvrmW13-8BF
-
-      - name: Upload APK
-        uses: actions/upload-artifact@v4
+          
+      - uses: actions/upload-artifact@v4
         with:
-          name: lami-chat-apk
-          path: lami-chat.apk
-          retention-days: 30
-
-      - name: Create Release
-        uses: softprops/action-gh-release@v1
+          name: app
+          path: ./app.apk
+          
+      - uses: softprops/action-gh-release@v1
         with:
-          tag_name: v1.0.${{ github.run_number }}
-          name: Lami Chat v1.0.${{ github.run_number }}
-          files: lami-chat.apk
-          body: |
-            ## Lami Chat Release
-            
-            ### 下载
-            下载下方的 APK 文件安装即可
-            
-            ### 安装说明
-            1. 下载 APK 文件
-            2. 在手机上打开并允许安装未知来源应用
-            3. 按照提示完成安装
-            
-            ### 测试账号
-            | 账号 | 密码 |
-            |------|------|
-            | TEST01 | Test123456 |
-            | TEST02 | Test123456 |
-            | TEST03 | Test123456 |
+          files: ./app.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
