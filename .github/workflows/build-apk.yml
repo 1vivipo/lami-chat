@@ -25,56 +25,19 @@ jobs:
           
       - run: npm install
       
-      - name: Install expect
-        run: sudo apt-get install -y expect
-      
-      - name: Trigger EAS Cloud Build
-        run: |
-          expect -c '
-            set timeout 1800
-            log_user 1
-            spawn eas build --platform android --profile preview --wait
-            expect {
-              "Would you like to automatically create an EAS project" {
-                send "y\r"
-                exp_continue
-              }
-              "Generate a new Android Keystore" {
-                send "y\r"
-                exp_continue
-              }
-              "Build for Android" {
-                exp_continue
-              }
-              timeout {
-                puts "Build timed out"
-                exit 1
-              }
-              eof
-            }
-          '
+      - name: Build with EAS
+        uses: expo/eas-build@main
+        with:
+          platform: android
+          profile: preview
+          wait: true
         env:
           EXPO_TOKEN: 7rlnN8DnBXZ57TftXkOibKDy8mQRZLvrmW13-8BF
-      
-      - name: Get latest build URL
-        id: build
-        run: |
-          BUILD_INFO=$(eas build:list --platform android --limit 1 --json)
-          echo "$BUILD_INFO"
-          BUILD_URL=$(echo "$BUILD_INFO" | jq -r '.[0].artifacts.buildUrl // empty')
-          echo "build_url=$BUILD_URL" >> $GITHUB_OUTPUT
-        env:
-          EXPO_TOKEN: 7rlnN8DnBXZ57TftXkOibKDy8mQRZLvrmW13-8BF
-          
-      - name: Download APK
-        run: |
-          curl -L -o lami-chat.apk "${{ steps.build.outputs.build_url }}"
-          ls -la lami-chat.apk
           
       - uses: actions/upload-artifact@v4
         with:
           name: lami-chat-apk
-          path: lami-chat.apk
+          path: '*.apk'
           retention-days: 90
           
       - name: Create Release
@@ -82,7 +45,7 @@ jobs:
         with:
           tag_name: v1.0.${{ github.run_number }}
           name: Lami Chat v1.0.${{ github.run_number }}
-          files: lami-chat.apk
+          files: '*.apk'
           body: |
             ## Lami Chat Release
             
