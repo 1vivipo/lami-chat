@@ -44,12 +44,15 @@ jobs:
       - name: Generate Android project
         run: npx expo prebuild --platform android --clean
         
-      - name: Fix build.gradle - add expo-module-gradle-plugin
+      - name: Fix build.gradle - add JitPack repo and expo-module-gradle-plugin
         run: |
           cd android
           
-          # 在 build.gradle 的 dependencies 块中添加 expo-module-gradle-plugin
-          sed -i "/classpath('org.jetbrains.kotlin:kotlin-gradle-plugin')/a\\        classpath('expo:expo-module-gradle-plugin:0.13.0')" build.gradle
+          # 在 buildscript repositories 中添加 JitPack
+          sed -i '/mavenCentral()/a\\        maven { url "https://www.jitpack.io" }' build.gradle
+          
+          # 在 dependencies 中添加 expo-module-gradle-plugin
+          sed -i "/classpath('org.jetbrains.kotlin:kotlin-gradle-plugin')/a\\        classpath('com.github.expo:expo-module-gradle-plugin:0.13.0')" build.gradle
           
           echo "=== Updated build.gradle ==="
           cat build.gradle
