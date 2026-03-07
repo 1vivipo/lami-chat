@@ -13,19 +13,10 @@ jobs:
       contents: write
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
       
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-          
-      - uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: 17
-          
-      - uses: android-actions/setup-android@v3
           
       - uses: expo/expo-github-action@v8
         with:
@@ -34,15 +25,15 @@ jobs:
           
       - run: npm install
       
-      - name: Install expect for interactive prompts
+      - name: Install expect
         run: sudo apt-get install -y expect
       
-      - name: Build APK with EAS
+      - name: Trigger EAS Cloud Build
         run: |
           expect -c '
-            set timeout 600
+            set timeout 1800
             log_user 1
-            spawn eas build --platform android --profile preview --local
+            spawn eas build --platform android --profile preview --wait
             expect {
               "Would you like to automatically create an EAS project" {
                 send "y\r"
@@ -50,6 +41,9 @@ jobs:
               }
               "Generate a new Android Keystore" {
                 send "y\r"
+                exp_continue
+              }
+              "Build for Android" {
                 exp_continue
               }
               timeout {
@@ -62,43 +56,25 @@ jobs:
         env:
           EXPO_TOKEN: 7rlnN8DnBXZ57TftXkOibKDy8mQRZLvrmW13-8BF
       
-      - name: Find and list APK files
+      - name: Get latest build URL
+        id: build
         run: |
-          echo "=== Current directory ==="
-          pwd
-          echo ""
-          echo "=== All files in current directory ==="
-          ls -la
-          echo ""
-          echo "=== Finding all APK files ==="
-          find . -name "*.apk" -type f 2>/dev/null
-          echo ""
-          echo "=== Checking build directories ==="
-          ls -la android/app/build/outputs/apk/debug/ 2>/dev/null || echo "No debug APK directory"
-          ls -la android/app/build/outputs/apk/release/ 2>/dev/null || echo "No release APK directory"
+          BUILD_INFO=$(eas build:list --platform android --limit 1 --json)
+          echo "$BUILD_INFO"
+          BUILD_URL=$(echo "$BUILD_INFO" | jq -r '.[0].artifacts.buildUrl // empty')
+          echo "build_url=$BUILD_URL" >> $GITHUB_OUTPUT
+        env:
+          EXPO_TOKEN: 7rlnN8DnBXZ57TftXkOibKDy8mQRZLvrmW13-8BF
           
-      - name: Copy APK to root
+      - name: Download APK
         run: |
-          APK_FILE=$(find . -name "*.apk" -type f 2>/dev/null | head -1)
-          if [ -n "$APK_FILE" ]; then
-            echo "Found APK: $APK_FILE"
-            cp "$APK_FILE" ./lami-chat.apk
-            ls -la ./lami-chat.apk
-          else
-            echo "No APK found, checking if build directory exists..."
-            if [ -d "android/app/build/outputs/apk/debug" ]; then
-              cp android/app/build/outputs/apk/debug/*.apk ./lami-chat.apk 2>/dev/null || true
-            fi
-            if [ ! -f "./lami-chat.apk" ]; then
-              echo "Still no APK found!"
-              exit 1
-            fi
-          fi
+          curl -L -o lami-chat.apk "${{ steps.build.outputs.build_url }}"
+          ls -la lami-chat.apk
           
       - uses: actions/upload-artifact@v4
         with:
           name: lami-chat-apk
-          path: ./lami-chat.apk
+          path: lami-chat.apk
           retention-days: 90
           
       - name: Create Release
@@ -106,7 +82,7 @@ jobs:
         with:
           tag_name: v1.0.${{ github.run_number }}
           name: Lami Chat v1.0.${{ github.run_number }}
-          files: ./lami-chat.apk
+          files: lami-chat.apk
           body: |
             ## Lami Chat Release
             
