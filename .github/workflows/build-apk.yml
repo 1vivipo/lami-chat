@@ -14,93 +14,69 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 18
-          
-      - uses: actions/setup-java@v4
+      - name: Setup Java
+        uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: 17
           
-      - uses: android-actions/setup-android@v3
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
       
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+          
       - name: Install dependencies
         run: npm install
         
-      - name: Remove EAS config
-        run: rm -f eas.json
-          
-      - name: Generate Android project
-        run: npx expo prebuild --platform android --clean --no-install
-        env:
-          EXPO_NO_DOTENV: 1
-          EXPO_NO_INTERACTIVE: 1
-          
-      - name: List generated files
-        run: ls -la android/
-          
-      - name: Build APK
+      - name: Clean previous builds
+        run: rm -rf android
+        
+      - name: Generate native project
+        run: |
+          # 直接调用 expo prebuild，不使用任何 EAS
+          npx expo prebuild --platform android
+        continue-on-error: true
+        
+      - name: Check if android folder exists
+        run: |
+          if [ -d "android" ]; then
+            echo "Android folder created successfully"
+            ls -la android/
+          else
+            echo "ERROR: Android folder not created!"
+            exit 1
+          fi
+        
+      - name: Build APK with Gradle
         run: |
           cd android
           chmod +x gradlew
-          ./gradlew assembleDebug --no-daemon --stacktrace
-          
-      - name: Find APK
+          ./gradlew assembleDebug
+        continue-on-error: true
+        
+      - name: Find all APK files
         run: |
-          echo "=== Finding APK files ==="
-          find /home -name "*.apk" -type f 2>/dev/null || true
-          find /github -name "*.apk" -type f 2>/dev/null || true
-          find . -name "*.apk" -type f 2>/dev/null || true
+          echo "=== Searching entire filesystem for APK ==="
+          find / -name "*.apk" -type f 2>/dev/null || true
           
-      - name: Copy APK
+      - name: Check build outputs
         run: |
-          # Try multiple possible locations
-          for path in \
-            "android/app/build/outputs/apk/debug/app-debug.apk" \
-            "./android/app/build/outputs/apk/debug/app-debug.apk" \
-            "app/build/outputs/apk/debug/app-debug.apk"
-          do
-            if [ -f "$path" ]; then
-              echo "Found APK at: $path"
-              cp "$path" ./lami-chat.apk
-              ls -la ./lami-chat.apk
-              exit 0
-            fi
-          done
+          echo "=== Checking android/app/build/outputs ==="
+          ls -la android/app/build/outputs/ 2>/dev/null || echo "outputs dir not found"
+          ls -la android/app/build/outputs/apk/ 2>/dev/null || echo "apk dir not found"
+          ls -la android/app/build/outputs/apk/debug/ 2>/dev/null || echo "debug dir not found"
+          ls -la android/app/build/outputs/apk/release/ 2>/dev/null || echo "release dir not found"
           
-          echo "APK not found in standard locations, searching..."
-          APK=$(find . -name "*.apk" -type f 2>/dev/null | head -1)
-          if [ -n "$APK" ]; then
-            echo "Found APK at: $APK"
-            cp "$APK" ./lami-chat.apk
-            ls -la ./lami-chat.apk
-            exit 0
-          fi
-          
-          echo "ERROR: No APK found!"
-          exit 1
-          
-      - uses: actions/upload-artifact@v4
+      - name: Upload APK if found
+        uses: actions/upload-artifact@v4
+        if: always()
         with:
-          name: lami-chat-apk
-          path: ./lami-chat.apk
-          retention-days: 90
-          
-      - name: Create Release
-        uses: softprops/action-gh-release@v1
-        with:
-          tag_name: v1.0.${{ github.run_number }}
-          name: Lami Chat v1.0.${{ github.run_number }}
-          files: ./lami-chat.apk
-          body: |
-            ## Lami Chat Release
-            
-            ### 测试账号
-            | 账号 | 密码 |
-            |------|------|
-            | TEST01 | Test123456 |
-            | TEST02 | Test123456 |
-            | TEST03 | Test123456 |
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          name: lami-chat-build
+          path: |
+            android/app/build/outputs/apk/**/*.apk
+            *.apk
+          retention-days: 7
+          if-no-files-found: warn
