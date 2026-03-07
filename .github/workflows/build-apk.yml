@@ -28,7 +28,7 @@ jobs:
         with:
           node-version: 18
           
-      - name: Clean everything
+      - name: Clean previous builds
         run: |
           rm -rf node_modules
           rm -rf android
@@ -38,23 +38,18 @@ jobs:
       - name: Install dependencies
         run: npm install
         
-      - name: Generate Android project with Expo
+      - name: Fix Expo dependencies
+        run: npx expo install --fix
+        
+      - name: Generate Android project
+        run: npx expo prebuild --platform android --clean
+        
+      - name: Fix Gradle version to 7.6.3
         run: |
-          # 使用 Expo 正确生成 Android 项目
-          npx expo prebuild --platform android --clean
-        env:
-          EXPO_NO_DOTENV: 1
-          
-      - name: Check generated files
-        run: |
-          echo "=== Android folder ==="
-          ls -la android/
-          echo ""
-          echo "=== Gradle wrapper ==="
-          cat android/gradle/wrapper/gradle-wrapper.properties
-          echo ""
-          echo "=== Build.gradle ==="
-          head -50 android/app/build.gradle
+          cd android
+          # 修改 gradle-wrapper.properties 使用 Gradle 7.6.3
+          sed -i 's|gradle-[0-9.]*-all.zip|gradle-7.6.3-all.zip|g' gradle/wrapper/gradle-wrapper.properties
+          cat gradle/wrapper/gradle-wrapper.properties
         
       - name: Build APK
         run: |
@@ -63,8 +58,7 @@ jobs:
           ./gradlew assembleDebug --stacktrace
           
       - name: Find APK
-        run: |
-          find android -name "*.apk" -type f
+        run: find android -name "*.apk" -type f
           
       - name: Copy APK
         run: |
