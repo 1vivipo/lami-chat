@@ -41,21 +41,18 @@ jobs:
       - name: Fix Expo dependencies
         run: npx expo install --fix
         
-      - name: Generate Android project (let Expo handle config)
+      - name: Generate Android project
+        run: npx expo prebuild --platform android --clean
+        
+      - name: Fix build.gradle - add expo-module-gradle-plugin
         run: |
-          # 让 Expo 自己生成正确的配置
-          npx expo prebuild --platform android --clean
+          cd android
           
-      - name: Show generated config
-        run: |
-          echo "=== settings.gradle ==="
-          cat android/settings.gradle
-          echo ""
-          echo "=== build.gradle ==="
-          cat android/build.gradle
-          echo ""
-          echo "=== gradle-wrapper.properties ==="
-          cat android/gradle/wrapper/gradle-wrapper.properties
+          # 在 build.gradle 的 dependencies 块中添加 expo-module-gradle-plugin
+          sed -i "/classpath('org.jetbrains.kotlin:kotlin-gradle-plugin')/a\\        classpath('expo:expo-module-gradle-plugin:0.13.0')" build.gradle
+          
+          echo "=== Updated build.gradle ==="
+          cat build.gradle
         
       - name: Build APK
         run: |
