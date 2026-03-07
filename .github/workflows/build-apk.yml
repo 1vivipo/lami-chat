@@ -14,11 +14,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       
-      - name: Setup Java
+      - name: Setup Java 11
         uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: 17
+          java-version: 11
           
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
@@ -44,11 +44,17 @@ jobs:
       - name: Generate Android project
         run: npx expo prebuild --platform android --clean
         
-      - name: Fix Gradle version to 7.6.3
+      - name: Fix Gradle and Java compatibility
         run: |
           cd android
-          # 修改 gradle-wrapper.properties 使用 Gradle 7.6.3
-          sed -i 's|gradle-[0-9.]*-all.zip|gradle-7.6.3-all.zip|g' gradle/wrapper/gradle-wrapper.properties
+          
+          # 使用 Gradle 8.0.1 (兼容 Java 11)
+          sed -i 's|gradle-[0-9.]*-all.zip|gradle-8.0.1-all.zip|g' gradle/wrapper/gradle-wrapper.properties
+          
+          # 修改 build.gradle 移除 Java toolchain 配置
+          sed -i '/jvmToolchain/d' build.gradle || true
+          sed -i '/toolchain/d' build.gradle || true
+          
           cat gradle/wrapper/gradle-wrapper.properties
         
       - name: Build APK
