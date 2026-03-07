@@ -31,7 +31,6 @@ jobs:
       - name: Remove EAS config
         run: |
           rm -f eas.json
-          cat app.json | jq 'del(.expo.extra.eas)' > app.json.tmp && mv app.json.tmp app.json
           
       - name: Generate Android project
         run: |
@@ -40,21 +39,29 @@ jobs:
           EXPO_NO_DOTENV: 1
           EXPO_NO_INTERACTIVE: 1
           
-      - name: List generated files
-        run: |
-          ls -la android/ || echo "No android folder"
-          ls -la android/app/ || echo "No app folder"
-          
       - name: Build APK
         run: |
           cd android
           chmod +x gradlew
-          ./gradlew assembleDebug --no-daemon --stacktrace 2>&1 | tee build.log
+          ./gradlew assembleDebug --no-daemon
           
-      - name: Find and copy APK
+      - name: Find APK files
         run: |
+          echo "=== Searching for APK files ==="
           find . -name "*.apk" -type f
-          cp android/app/build/outputs/apk/debug/*.apk ./lami-chat.apk
+          echo ""
+          echo "=== Checking debug directory ==="
+          ls -la android/app/build/outputs/apk/debug/ || true
+          
+      - name: Copy APK
+        run: |
+          if [ -f "android/app/build/outputs/apk/debug/app-debug.apk" ]; then
+            cp android/app/build/outputs/apk/debug/app-debug.apk ./lami-chat.apk
+            echo "APK copied successfully"
+          else
+            echo "APK not found in expected location"
+            exit 1
+          fi
           ls -la ./lami-chat.apk
           
       - uses: actions/upload-artifact@v4
