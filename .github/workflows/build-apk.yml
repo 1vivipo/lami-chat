@@ -44,20 +44,64 @@ jobs:
       - name: Generate Android project
         run: npx expo prebuild --platform android --clean
         
-      - name: Fix build.gradle - add correct repos and plugin
+      - name: Fix build.gradle completely
         run: |
           cd android
           
-          # 在 buildscript repositories 中添加 Gradle 插件仓库
-          sed -i '/mavenCentral()/a\        maven { url "https://plugins.gradle.org/m2/" }' build.gradle
+          # 创建新的 build.gradle 头部，使用 plugins 块
+          cat > build.gradle.new << 'EOF'
+          // Top-level build file where you can add configuration options common to all sub-projects/modules.
+
+          plugins {
+              id('com.android.application') version '8.1.0' apply false
+              id('com.android.library') version '8.1.0' apply false
+              id('org.jetbrains.kotlin.android') version '1.9.0' apply false
+              id("expo-module") version "0.13.0" apply false
+          }
+
+          buildscript {
+              ext {
+                  buildToolsVersion = findProperty('android.buildToolsVersion') ?: '34.0.0'
+                  minSdkVersion = Integer.parseInt(findProperty('android.minSdkVersion') ?: '23')
+                  compileSdkVersion = Integer.parseInt(findProperty('android.compileSdkVersion') ?: '34')
+                  targetSdkVersion = Integer.parseInt(findProperty('android.targetSdkVersion') ?: '34')
+                  kotlinVersion = findProperty('android.kotlinVersion') ?: '1.9.0'
+                  ndkVersion = "26.1.10909125"
+              }
+              repositories {
+                  google()
+                  mavenCentral()
+                  maven { url "https://plugins.gradle.org/m2/" }
+                  maven { url "https://jitpack.io" }
+              }
+              dependencies {
+                  classpath('com.android.tools.build:gradle:8.1.0')
+                  classpath('com.facebook.react:react-native-gradle-plugin')
+                  classpath('org.jetbrains.kotlin:kotlin-gradle-plugin:1.9.0')
+              }
+          }
+
+          apply plugin: "com.facebook.react.rootproject"
+
+          allprojects {
+              repositories {
+                  maven {
+                      url(new File(['node', '--print', "require.resolve('react-native/package.json')"].execute(null, rootDir).text.trim(), '../android'))
+                  }
+                  maven {
+                      url(new File(['node', '--print', "require.resolve('jsc-android/package.json', { paths: [require.resolve('react-native/package.json')] })"].execute(null, rootDir).text.trim(), '../dist'))
+                  }
+                  google()
+                  mavenCentral()
+                  maven { url "https://plugins.gradle.org/m2/" }
+                  maven { url "https://jitpack.io" }
+              }
+          }
+          EOF
           
-          # 在 allprojects repositories 中添加 Gradle 插件仓库
-          sed -i '/maven { url.*jitpack.io }/a\        maven { url "https://plugins.gradle.org/m2/" }' build.gradle
+          mv build.gradle.new build.gradle
           
-          # 修改 expo-module-gradle-plugin 的坐标
-          sed -i 's|expo:expo-module-gradle-plugin:0.13.0|gradle.plugin.expo.modules:expo-module-gradle-plugin:0.13.0|g' build.gradle
-          
-          echo "=== Updated build.gradle ==="
+          echo "=== New build.gradle ==="
           cat build.gradle
         
       - name: Build APK
