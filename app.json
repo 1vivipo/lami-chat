@@ -67,9 +67,6 @@
     "extra": {
       "router": {
         "origin": false
-      },
-      "eas": {
-        "projectId": "lami-chat-project"
       }
     }
   }
