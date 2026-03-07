@@ -19,15 +19,6 @@ jobs:
         with:
           node-version: '20'
 
-      - name: Setup Java
-        uses: actions/setup-java@v4
-        with:
-          distribution: 'temurin'
-          java-version: '17'
-
-      - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
-
       - name: Install dependencies
         run: npm install
 
@@ -37,22 +28,24 @@ jobs:
           eas-version: latest
           token: 7rlnN8DnBXZ57TftXkOibKDy8mQRZLvrmW13-8BF
 
-      - name: Generate native Android project
-        run: npx expo prebuild --platform android
+      - name: Build on EAS
+        uses: expo/eas-build@main
+        with:
+          platform: android
+          profile: preview
+          wait: true
         env:
           EXPO_TOKEN: 7rlnN8DnBXZ57TftXkOibKDy8mQRZLvrmW13-8BF
 
-      - name: Build Debug APK with Gradle
+      - name: Download APK from EAS
         run: |
-          cd android
-          chmod +x gradlew
-          ./gradlew assembleDebug --no-daemon --stacktrace
+          npm install -g eas-cli
+          eas build:list --platform android --limit 1 --json > build_info.json
+          BUILD_URL=$(cat build_info.json | grep -o '"buildUrl":"[^"]*"' | cut -d'"' -f4)
+          echo "Build URL: $BUILD_URL"
+          curl -L -o lami-chat.apk "$BUILD_URL"
         env:
-          JAVA_OPTS: "-Xmx4g -XX:+HeapDumpOnOutOfMemoryError"
-          GRADLE_OPTS: "-Dorg.gradle.daemon=false -Dorg.gradle.parallel=false -Dorg.gradle.jvmargs=-Xmx4g"
-
-      - name: Rename APK
-        run: mv android/app/build/outputs/apk/debug/app-debug.apk lami-chat.apk
+          EXPO_TOKEN: 7rlnN8DnBXZ57TftXkOibKDy8mQRZLvrmW13-8BF
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
