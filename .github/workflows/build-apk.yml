@@ -44,11 +44,11 @@ jobs:
       - name: Generate Android project
         run: npx expo prebuild --platform android --clean
         
-      - name: Fix build.gradle - use traditional way without plugins block
+      - name: Fix build.gradle - add apply plugin expo-module
         run: |
           cd android
           
-          # 创建新的 build.gradle，使用传统方式
+          # 创建新的 build.gradle，按照豆包的建议
           cat > build.gradle.new << 'EOF'
           // Top-level build file where you can add configuration options common to all sub-projects/modules.
 
@@ -75,7 +75,10 @@ jobs:
               }
           }
 
+          // 应用 React Native 根项目插件
           apply plugin: "com.facebook.react.rootproject"
+          // 应用 Expo 模块插件
+          apply plugin: "expo-module"
 
           allprojects {
               repositories {
@@ -90,6 +93,10 @@ jobs:
                   maven { url "https://plugins.gradle.org/m2/" }
                   maven { url "https://jitpack.io" }
               }
+          }
+
+          task clean(type: Delete) {
+              delete rootProject.buildDir
           }
           EOF
           
