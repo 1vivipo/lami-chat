@@ -33,7 +33,7 @@ jobs:
       - name: Build APK with auto-confirm
         run: |
           expect -c '
-            spawn eas build --platform android --profile preview --local --output ./app.apk
+            spawn eas build --platform android --profile preview --local --output ./lami-chat.apk
             expect {
               "Would you like to automatically create an EAS project" {
                 send "y\r"
@@ -49,18 +49,22 @@ jobs:
         env:
           EXPO_TOKEN: 7rlnN8DnBXZ57TftXkOibKDy8mQRZLvrmW13-8BF
           
+      - name: Verify APK exists
+        run: ls -la ./lami-chat.apk
+          
       - uses: actions/upload-artifact@v4
         with:
           name: lami-chat-apk
-          path: ./app.apk
-          retention-days: 30
+          path: ./lami-chat.apk
+          retention-days: 90
+          if-no-files-found: error
           
       - name: Create Release
         uses: softprops/action-gh-release@v1
         with:
           tag_name: v1.0.${{ github.run_number }}
           name: Lami Chat v1.0.${{ github.run_number }}
-          files: ./app.apk
+          files: ./lami-chat.apk
           body: |
             ## Lami Chat Release
             
