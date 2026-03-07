@@ -47,11 +47,40 @@ jobs:
           
       - uses: actions/upload-artifact@v4
         with:
-          name: app
+          name: lami-chat-apk
           path: ./app.apk
+          retention-days: 30
+          
+      - name: Create Tag
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag -a "v1.0.${{ github.run_number }}" -m "Release v1.0.${{ github.run_number }}"
+          git push origin "v1.0.${{ github.run_number }}"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           
       - uses: softprops/action-gh-release@v1
         with:
+          tag_name: v1.0.${{ github.run_number }}
+          name: Lami Chat v1.0.${{ github.run_number }}
           files: ./app.apk
+          body: |
+            ## Lami Chat Release
+            
+            ### 下载
+            下载下方的 APK 文件安装即可
+            
+            ### 安装说明
+            1. 下载 APK 文件
+            2. 在手机上打开并允许安装未知来源应用
+            3. 按照提示完成安装
+            
+            ### 测试账号
+            | 账号 | 密码 |
+            |------|------|
+            | TEST01 | Test123456 |
+            | TEST02 | Test123456 |
+            | TEST03 | Test123456 |
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
