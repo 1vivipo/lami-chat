@@ -49,19 +49,24 @@ jobs:
         env:
           EXPO_TOKEN: 7rlnN8DnBXZ57TftXkOibKDy8mQRZLvrmW13-8BF
       
-      - name: List files
-        run: ls -la
-          
-      - name: Find APK file
+      - name: List files and find APK
         run: |
+          echo "=== Listing all files ==="
+          ls -la
+          echo ""
+          echo "=== Finding APK files ==="
+          find . -name "*.apk" -type f
+          echo ""
+          echo "=== Copying APK ==="
           APK_FILE=$(find . -name "*.apk" -type f | head -1)
-          echo "Found APK: $APK_FILE"
           if [ -n "$APK_FILE" ]; then
+            echo "Found: $APK_FILE"
             cp "$APK_FILE" ./lami-chat.apk
+            ls -la ./lami-chat.apk
+          else
+            echo "No APK found!"
+            exit 1
           fi
-          
-      - name: Verify APK exists
-        run: ls -la ./lami-chat.apk
           
       - uses: actions/upload-artifact@v4
         with:
