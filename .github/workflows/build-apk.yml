@@ -37,16 +37,18 @@ jobs:
         env:
           EXPO_TOKEN: 7rlnN8DnBXZ57TftXkOibKDy8mQRZLvrmW13-8BF
           
-      - name: Build APK
+      - name: Build Debug APK
         run: |
           cd android
           chmod +x gradlew
-          ./gradlew assembleRelease --no-daemon
+          ./gradlew assembleDebug --no-daemon --stacktrace
           
       - name: Find APK
         run: |
+          echo "=== Finding APK files ==="
           find . -name "*.apk" -type f
-          cp android/app/build/outputs/apk/release/*.apk ./lami-chat.apk || cp android/app/build/outputs/apk/debug/*.apk ./lami-chat.apk
+          echo ""
+          cp android/app/build/outputs/apk/debug/*.apk ./lami-chat.apk
           ls -la ./lami-chat.apk
           
       - uses: actions/upload-artifact@v4
