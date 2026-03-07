@@ -18,6 +18,13 @@ jobs:
         with:
           node-version: 20
           
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+          
+      - uses: android-actions/setup-android@v3
+          
       - uses: expo/expo-github-action@v8
         with:
           eas-version: latest
@@ -25,19 +32,27 @@ jobs:
           
       - run: npm install
       
-      - name: Build with EAS
-        uses: expo/eas-build@main
-        with:
-          platform: android
-          profile: preview
-          wait: true
+      - name: Generate Android project
+        run: npx expo prebuild --platform android
         env:
           EXPO_TOKEN: 7rlnN8DnBXZ57TftXkOibKDy8mQRZLvrmW13-8BF
+          
+      - name: Build APK
+        run: |
+          cd android
+          chmod +x gradlew
+          ./gradlew assembleRelease --no-daemon
+          
+      - name: Find APK
+        run: |
+          find . -name "*.apk" -type f
+          cp android/app/build/outputs/apk/release/*.apk ./lami-chat.apk || cp android/app/build/outputs/apk/debug/*.apk ./lami-chat.apk
+          ls -la ./lami-chat.apk
           
       - uses: actions/upload-artifact@v4
         with:
           name: lami-chat-apk
-          path: '*.apk'
+          path: ./lami-chat.apk
           retention-days: 90
           
       - name: Create Release
@@ -45,7 +60,7 @@ jobs:
         with:
           tag_name: v1.0.${{ github.run_number }}
           name: Lami Chat v1.0.${{ github.run_number }}
-          files: '*.apk'
+          files: ./lami-chat.apk
           body: |
             ## Lami Chat Release
             
