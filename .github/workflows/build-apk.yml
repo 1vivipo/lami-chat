@@ -44,12 +44,32 @@ jobs:
       - name: Generate Android project
         run: npx expo prebuild --platform android --clean
         
-      - name: Show original build.gradle
+      - name: Fix settings.gradle - add pluginManagement
         run: |
-          echo "=== Original build.gradle ==="
-          cat android/build.gradle
+          cd android
+          
+          # 在 settings.gradle 开头添加 pluginManagement 配置
+          cat > settings.gradle.new << 'EOF'
+          pluginManagement {
+              repositories {
+                  google()
+                  mavenCentral()
+                  gradlePluginPortal()
+                  maven { url "https://plugins.gradle.org/m2/" }
+                  maven { url "https://jitpack.io" }
+              }
+          }
+
+          EOF
+          
+          # 将原 settings.gradle 内容追加到新文件
+          cat settings.gradle >> settings.gradle.new
+          mv settings.gradle.new settings.gradle
+          
+          echo "=== New settings.gradle ==="
+          cat settings.gradle
         
-      - name: Build APK (let Expo handle everything)
+      - name: Build APK
         run: |
           cd android
           chmod +x gradlew
