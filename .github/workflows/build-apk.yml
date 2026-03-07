@@ -28,7 +28,7 @@ jobs:
         with:
           node-version: 18
           
-      - name: Clean previous builds
+      - name: Clean everything
         run: |
           rm -rf node_modules
           rm -rf android
@@ -41,52 +41,21 @@ jobs:
       - name: Fix Expo dependencies
         run: npx expo install --fix
         
-      - name: Generate Android project
-        run: npx expo prebuild --platform android --clean
-        
-      - name: Fix Gradle config
+      - name: Generate Android project (let Expo handle config)
         run: |
-          cd android
+          # 让 Expo 自己生成正确的配置
+          npx expo prebuild --platform android --clean
           
-          # 使用 Gradle 8.2
-          sed -i 's|gradle-[0-9.]*-all.zip|gradle-8.2-all.zip|g' gradle/wrapper/gradle-wrapper.properties
-          
-          # 确保 settings.gradle 包含 Expo 仓库
-          if ! grep -q "expo-module-gradle-plugin" settings.gradle 2>/dev/null; then
-            echo "Adding expo-module-gradle-plugin to settings.gradle"
-            cat >> settings.gradle << 'EOF'
-
-          // Expo modules
-          apply from: new File(["node", "--print", "require.resolve('expo/package.json')"].execute(null, rootDir).text.trim(), "../scripts/autolinking.gradle");
-          apply from: new File(["node", "--print", "require.resolve('@expo/config/package.json')"].execute(null, rootDir).text.trim(), "../scripts/generate-unimodules-gradle.gradle");
-          useExpoModules()
-          EOF
-          fi
-          
-          # 确保 build.gradle 包含 Expo 插件
-          if [ -f "build.gradle" ]; then
-            if ! grep -q "expo-module-gradle-plugin" build.gradle 2>/dev/null; then
-              echo "Adding expo-module-gradle-plugin to build.gradle"
-              sed -i '/dependencies {/a\        classpath("expo:expo-module-gradle-plugin:0.13.0")' build.gradle || true
-            fi
-          fi
-          
-          # 确保 app/build.gradle 包含 Expo 插件
-          if [ -f "app/build.gradle" ]; then
-            if ! grep -q "expo-module-gradle-plugin" app/build.gradle 2>/dev/null; then
-              echo "Adding expo-module-gradle-plugin to app/build.gradle"
-              sed -i '1i\apply plugin: "expo-module-gradle-plugin"' app/build.gradle || true
-            fi
-          fi
-          
+      - name: Show generated config
+        run: |
           echo "=== settings.gradle ==="
-          cat settings.gradle
+          cat android/settings.gradle
           echo ""
           echo "=== build.gradle ==="
-          cat build.gradle
+          cat android/build.gradle
           echo ""
-          echo "=== app/build.gradle (first 30 lines) ==="
-          head -30 app/build.gradle
+          echo "=== gradle-wrapper.properties ==="
+          cat android/gradle/wrapper/gradle-wrapper.properties
         
       - name: Build APK
         run: |
