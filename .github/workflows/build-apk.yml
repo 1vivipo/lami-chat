@@ -16,11 +16,6 @@ jobs:
         with:
           node-version: 20
           
-      - uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: 17
-          
       - uses: expo/expo-github-action@v8
         with:
           eas-version: latest
@@ -28,9 +23,21 @@ jobs:
           
       - run: npm install
       
-      - run: eas build --platform android --profile preview --local --output ./app.apk
+      - name: Trigger EAS Cloud Build
+        run: eas build --platform android --profile preview --wait
         env:
           EXPO_TOKEN: 7rlnN8DnBXZ57TftXkOibKDy8mQRZLvrmW13-8BF
+          
+      - name: Get Build URL
+        id: build-url
+        run: |
+          BUILD_URL=$(eas build:list --platform android --limit 1 --json | jq -r '.[0].artifacts.buildUrl')
+          echo "url=$BUILD_URL" >> $GITHUB_OUTPUT
+        env:
+          EXPO_TOKEN: 7rlnN8DnBXZ57TftXkOibKDy8mQRZLvrmW13-8BF
+          
+      - name: Download APK
+        run: curl -L -o app.apk "${{ steps.build-url.outputs.url }}"
           
       - uses: actions/upload-artifact@v4
         with:
