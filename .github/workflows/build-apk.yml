@@ -23,8 +23,35 @@ jobs:
           
       - run: npm install
       
-      - name: Build APK (auto create project)
-        run: yes | eas build --platform android --profile preview --local --output ./app.apk
+      - name: Build APK with expect
+        run: |
+          # Install expect for interactive prompts
+          sudo apt-get install -y expect
+          
+          # Create expect script
+          cat > build.exp << 'EOF'
+          #!/usr/bin/expect -f
+          set timeout 600
+          spawn eas build --platform android --profile preview --local --output ./app.apk
+          expect {
+            "Would you like to automatically create an EAS project" {
+              send "y\r"
+              exp_continue
+            }
+            "Would you like to automatically create" {
+              send "y\r"
+              exp_continue
+            }
+            "Generate a new Android Keystore" {
+              send "y\r"
+              exp_continue
+            }
+            eof
+          }
+          EOF
+          
+          chmod +x build.exp
+          ./build.exp
         env:
           EXPO_TOKEN: 7rlnN8DnBXZ57TftXkOibKDy8mQRZLvrmW13-8BF
           
