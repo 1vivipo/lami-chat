@@ -44,20 +44,18 @@ jobs:
       - name: Generate Android project
         run: npx expo prebuild --platform android --clean
         
-      - name: Fix Gradle config
+      - name: Fix Gradle version to 8.2
         run: |
           cd android
           
-          # 使用 Gradle 8.0.1
-          sed -i 's|gradle-[0-9.]*-all.zip|gradle-8.0.1-all.zip|g' gradle/wrapper/gradle-wrapper.properties
+          # 使用 Gradle 8.2 (Android Gradle Plugin 要求的最低版本)
+          sed -i 's|gradle-[0-9.]*-all.zip|gradle-8.2-all.zip|g' gradle/wrapper/gradle-wrapper.properties
           
-          # 修改 app/build.gradle 移除 Java toolchain
+          # 移除 Java toolchain 配置
           if [ -f "app/build.gradle" ]; then
             sed -i '/jvmToolchain/d' app/build.gradle || true
             sed -i '/toolchain/d' app/build.gradle || true
           fi
-          
-          # 修改根 build.gradle
           if [ -f "build.gradle" ]; then
             sed -i '/jvmToolchain/d' build.gradle || true
             sed -i '/toolchain/d' build.gradle || true
