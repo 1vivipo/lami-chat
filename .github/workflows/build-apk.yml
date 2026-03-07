@@ -23,13 +23,8 @@ jobs:
           
       - run: npm install
       
-      - name: Configure EAS project
-        run: eas build:configure --platform android --non-interactive
-        env:
-          EXPO_TOKEN: 7rlnN8DnBXZ57TftXkOibKDy8mQRZLvrmW13-8BF
-          
-      - name: Build APK
-        run: eas build --platform android --profile preview --local --output ./app.apk --non-interactive
+      - name: Build APK (auto create project)
+        run: yes | eas build --platform android --profile preview --local --output ./app.apk
         env:
           EXPO_TOKEN: 7rlnN8DnBXZ57TftXkOibKDy8mQRZLvrmW13-8BF
           
