@@ -34,13 +34,16 @@ jobs:
       - name: Prebuild Android project
         run: npx expo prebuild --platform android
         
-      - name: Build APK using Expo
-        run: npx expo run:android --variant debug --no-install
+      - name: Build APK with Gradle
+        run: |
+          cd android
+          chmod +x gradlew
+          ./gradlew assembleDebug --stacktrace
           
       - name: Find APK
         run: |
           echo "=== Searching for APK files ==="
-          find . -name "*.apk" -type f
+          find android -name "*.apk" -type f
           
       - name: Copy APK
         run: |
