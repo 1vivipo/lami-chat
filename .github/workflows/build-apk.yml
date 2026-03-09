@@ -34,11 +34,25 @@ jobs:
       - name: Prebuild Android project
         run: npx expo prebuild --platform android
         
+      - name: Patch Gradle files for compatibility
+        run: |
+          # 将 android/build.gradle 中的 AGP 版本改为 7.4.2
+          sed -i "s/com.android.tools.build:gradle:.*/com.android.tools.build:gradle:7.4.2'/" android/build.gradle
+          # 将 gradle-wrapper.properties 中的 Gradle 版本改为 8.0.2
+          sed -i "s/gradle-.*-all.zip/gradle-8.0.2-all.zip/" android/gradle/wrapper/gradle-wrapper.properties
+          echo "=== Patched AGP to 7.4.2 and Gradle to 8.0.2 ==="
+          echo ""
+          echo "=== build.gradle ==="
+          cat android/build.gradle
+          echo ""
+          echo "=== gradle-wrapper.properties ==="
+          cat android/gradle/wrapper/gradle-wrapper.properties
+        
       - name: Build APK with Gradle
         run: |
           cd android
           chmod +x gradlew
-          ./gradlew assembleDebug --stacktrace
+          ./gradlew clean assembleDebug --stacktrace
           
       - name: Find APK
         run: |
