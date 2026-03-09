@@ -44,36 +44,27 @@ jobs:
       - name: Generate Android project
         run: npx expo prebuild --platform android --clean
         
-      - name: Fix settings.gradle - add pluginManagement
+      - name: Downgrade AGP to 7.4.2 for Expo compatibility
         run: |
           cd android
           
-          # 在 settings.gradle 开头添加 pluginManagement 配置
-          cat > settings.gradle.new << 'EOF'
-          pluginManagement {
-              repositories {
-                  google()
-                  mavenCentral()
-                  gradlePluginPortal()
-                  maven { url "https://plugins.gradle.org/m2/" }
-                  maven { url "https://jitpack.io" }
-              }
-          }
-
-          EOF
+          # 修改 build.gradle 中的 AGP 版本
+          sed -i "s|classpath('com.android.tools.build:gradle')|classpath('com.android.tools.build:gradle:7.4.2')|g" build.gradle
           
-          # 将原 settings.gradle 内容追加到新文件
-          cat settings.gradle >> settings.gradle.new
-          mv settings.gradle.new settings.gradle
+          # 修改 Gradle 版本到 7.6.3
+          sed -i "s|gradle-[0-9.]*-all.zip|gradle-7.6.3-all.zip|g" gradle/wrapper/gradle-wrapper.properties
           
-          echo "=== New settings.gradle ==="
-          cat settings.gradle
+          echo "=== Updated build.gradle ==="
+          cat build.gradle
+          echo ""
+          echo "=== Updated gradle-wrapper.properties ==="
+          cat gradle/wrapper/gradle-wrapper.properties
         
       - name: Build APK
         run: |
           cd android
           chmod +x gradlew
-          ./gradlew assembleDebug --stacktrace
+          ./gradlew assembleDebug --stacktrace 2>&1 | tee build_output.log
           
       - name: Find APK
         run: find android -name "*.apk" -type f
@@ -86,6 +77,7 @@ jobs:
             ls -la ./lami-chat.apk
           else
             echo "No APK found!"
+            cat android/build_output.log | grep -i "error\|failure" | head -50
             exit 1
           fi
           
