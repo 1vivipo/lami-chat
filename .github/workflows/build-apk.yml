@@ -64,10 +64,13 @@ jobs:
         run: |
           cd android
           chmod +x gradlew
-          ./gradlew assembleDebug --stacktrace 2>&1 | tee build_output.log
+          # 不使用 tee，让错误直接失败
+          ./gradlew assembleDebug --stacktrace
           
       - name: Find APK
-        run: find android -name "*.apk" -type f
+        run: |
+          echo "=== Searching for APK files ==="
+          find . -name "*.apk" -type f
           
       - name: Copy APK
         run: |
@@ -77,7 +80,6 @@ jobs:
             ls -la ./lami-chat.apk
           else
             echo "No APK found!"
-            cat android/build_output.log | grep -i "error\|failure" | head -50
             exit 1
           fi
           
