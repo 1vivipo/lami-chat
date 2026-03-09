@@ -36,9 +36,14 @@ jobs:
         
       - name: Patch Gradle files for compatibility
         run: |
-          # 修复：正确匹配版本号并保留引号
-          sed -i "s/com.android.tools.build:gradle:[0-9.]\+'/com.android.tools.build:gradle:7.4.2'/" android/build.gradle
-          sed -i "s/gradle-.*-all.zip/gradle-8.0.2-all.zip/" android/gradle/wrapper/gradle-wrapper.properties
+          # 使用扩展正则 (-E) 确保正确匹配版本号
+          sed -i -E "s/classpath\(['\"]com.android.tools.build:gradle:[0-9.]+['\"]\)/classpath('com.android.tools.build:gradle:7.4.2')/" android/build.gradle
+          # 如果上面没有匹配到（可能是无版本号的情况），则插入版本号
+          if ! grep -q "gradle:7.4.2" android/build.gradle; then
+            sed -i -E "s/classpath\(['\"]com.android.tools.build:gradle['\"]\)/classpath('com.android.tools.build:gradle:7.4.2')/" android/build.gradle
+          fi
+          # 修改 Gradle 版本为 8.0.2
+          sed -i -E "s/gradle-[0-9.]+-all.zip/gradle-8.0.2-all.zip/" android/gradle/wrapper/gradle-wrapper.properties
           echo "=== Patched AGP to 7.4.2 and Gradle to 8.0.2 ==="
           echo ""
           echo "=== AGP line in build.gradle ==="
