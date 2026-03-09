@@ -26,27 +26,16 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: 18
+          node-version: 20
           
       - name: Install dependencies
-        run: npm install
+        run: npm ci
         
-      - name: Fix Expo dependencies
-        run: npx expo install --fix
+      - name: Prebuild Android project
+        run: npx expo prebuild --platform android
         
-      - name: Verify configuration
-        run: |
-          echo "=== build.gradle ==="
-          cat android/build.gradle
-          echo ""
-          echo "=== gradle-wrapper.properties ==="
-          cat android/gradle/wrapper/gradle-wrapper.properties
-        
-      - name: Build APK
-        run: |
-          cd android
-          chmod +x gradlew
-          ./gradlew assembleDebug --stacktrace
+      - name: Build APK using Expo
+        run: npx expo run:android --variant debug --no-install
           
       - name: Find APK
         run: |
