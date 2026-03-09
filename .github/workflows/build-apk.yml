@@ -28,10 +28,9 @@ jobs:
         with:
           node-version: 18
           
-      - name: Clean everything
+      - name: Clean (but keep android directory)
         run: |
           rm -rf node_modules
-          rm -rf android
           rm -rf ios
           rm -f package-lock.json
           
@@ -41,30 +40,26 @@ jobs:
       - name: Fix Expo dependencies
         run: npx expo install --fix
         
-      - name: Generate Android project
-        run: npx expo prebuild --platform android --clean
+      - name: Generate Android project (only if not exists)
+        run: |
+          if [ ! -d "android" ]; then
+            npx expo prebuild --platform android --clean
+          fi
         
-      - name: Downgrade AGP to 7.4.2 for Expo compatibility
+      - name: Verify AGP and Gradle versions
         run: |
           cd android
           
-          # 修改 build.gradle 中的 AGP 版本
-          sed -i "s|classpath('com.android.tools.build:gradle')|classpath('com.android.tools.build:gradle:7.4.2')|g" build.gradle
-          
-          # 修改 Gradle 版本到 7.6.3
-          sed -i "s|gradle-[0-9.]*-all.zip|gradle-7.6.3-all.zip|g" gradle/wrapper/gradle-wrapper.properties
-          
-          echo "=== Updated build.gradle ==="
+          echo "=== Current build.gradle ==="
           cat build.gradle
           echo ""
-          echo "=== Updated gradle-wrapper.properties ==="
+          echo "=== Current gradle-wrapper.properties ==="
           cat gradle/wrapper/gradle-wrapper.properties
         
       - name: Build APK
         run: |
           cd android
           chmod +x gradlew
-          # 不使用 tee，让错误直接失败
           ./gradlew assembleDebug --stacktrace
           
       - name: Find APK
