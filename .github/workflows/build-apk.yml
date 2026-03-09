@@ -28,33 +28,19 @@ jobs:
         with:
           node-version: 18
           
-      - name: Clean (but keep android directory)
-        run: |
-          rm -rf node_modules
-          rm -rf ios
-          rm -f package-lock.json
-          
       - name: Install dependencies
         run: npm install
         
       - name: Fix Expo dependencies
         run: npx expo install --fix
         
-      - name: Generate Android project (only if not exists)
+      - name: Verify configuration
         run: |
-          if [ ! -d "android" ]; then
-            npx expo prebuild --platform android --clean
-          fi
-        
-      - name: Verify AGP and Gradle versions
-        run: |
-          cd android
-          
-          echo "=== Current build.gradle ==="
-          cat build.gradle
+          echo "=== build.gradle ==="
+          cat android/build.gradle
           echo ""
-          echo "=== Current gradle-wrapper.properties ==="
-          cat gradle/wrapper/gradle-wrapper.properties
+          echo "=== gradle-wrapper.properties ==="
+          cat android/gradle/wrapper/gradle-wrapper.properties
         
       - name: Build APK
         run: |
