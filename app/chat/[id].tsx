@@ -246,7 +246,7 @@ export default function ChatDetailScreen() {
           <Ionicons name="arrow-back" size={24} color={colors.text} />
         </TouchableOpacity>
         <Text style={{ flex: 1, textAlign: 'center', fontSize: FontSize.lg, fontWeight: '600', color: colors.text }}>
-          {isGroup ? groupInfo?.name || otherUser?.nickname || '聊天'}
+          {isGroup ? (groupInfo?.name || '群聊') : (otherUser?.nickname || '聊天')}
         </Text>
         <TouchableOpacity onPress={() => isGroup && router.push(`/group-settings?id=${id}`)}>
           <Ionicons name={isGroup ? 'settings-outline' : 'ellipsis-vertical'} size={24} color={colors.text} />
