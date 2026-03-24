@@ -35,6 +35,19 @@ jobs:
       - name: Prebuild Android project
         run: npx expo prebuild --platform android
         
+      - name: Configure Gradle memory
+        run: |
+          cd android
+          
+          # 增加 Gradle 内存配置
+          echo "org.gradle.jvmargs=-Xmx4g -XX:MaxMetaspaceSize=1g -XX:+HeapDumpOnOutOfMemoryError" >> gradle.properties
+          echo "org.gradle.daemon=false" >> gradle.properties
+          echo "org.gradle.parallel=false" >> gradle.properties
+          echo "org.gradle.configureondemand=false" >> gradle.properties
+          
+          echo "=== Gradle 配置 ==="
+          cat gradle.properties
+        
       - name: Build APK with Gradle
         id: build
         run: |
@@ -42,6 +55,8 @@ jobs:
           chmod +x gradlew
           ./gradlew assembleDebug --stacktrace 2>&1 | tee build.log
         continue-on-error: true
+        env:
+          JAVA_OPTS: "-Xmx4g -XX:MaxMetaspaceSize=1g"
         
       - name: Check build result
         id: check
