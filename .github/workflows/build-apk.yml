@@ -35,6 +35,28 @@ jobs:
       - name: Prebuild Android project
         run: npx expo prebuild --platform android
         
+      - name: Fix Gradle compatibility
+        run: |
+          cd android
+          
+          # 降级 Gradle 到 8.0.2
+          sed -i 's/gradle-.*-all.zip/gradle-8.0.2-all.zip/' gradle/wrapper/gradle-wrapper.properties
+          
+          # 降级 AGP 到 7.4.2
+          sed -i -E "s/classpath\(['\"]com.android.tools.build:gradle:[0-9.]+['\"]\)/classpath('com.android.tools.build:gradle:7.4.2')/" build.gradle
+          
+          # 如果上面没有匹配到，尝试另一种方式
+          if ! grep -q "gradle:7.4.2" build.gradle; then
+            sed -i -E "s/com.android.tools.build:gradle/com.android.tools.build:gradle:7.4.2/" build.gradle
+          fi
+          
+          echo "=== 修改后的配置 ==="
+          echo "Gradle 版本:"
+          cat gradle/wrapper/gradle-wrapper.properties
+          echo ""
+          echo "AGP 版本:"
+          grep "com.android.tools.build:gradle" build.gradle
+        
       - name: Build APK with Gradle
         id: build
         run: |
