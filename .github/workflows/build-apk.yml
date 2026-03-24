@@ -39,23 +39,18 @@ jobs:
         run: |
           cd android
           
-          # 降级 Gradle 到 8.2（AGP 7.4.2 最低要求）
-          sed -i 's/gradle-.*-all.zip/gradle-8.2-all.zip/' gradle/wrapper/gradle-wrapper.properties
+          # 使用 Expo SDK 51 推荐的版本
+          # Gradle 8.6.0 + AGP 8.1.0
+          sed -i 's/gradle-.*-all.zip/gradle-8.6.0-all.zip/' gradle/wrapper/gradle-wrapper.properties
           
-          # 降级 AGP 到 7.4.2
-          sed -i -E "s/classpath\(['\"]com.android.tools.build:gradle:[0-9.]+['\"]\)/classpath('com.android.tools.build:gradle:7.4.2')/" build.gradle
-          
-          # 如果上面没有匹配到，尝试另一种方式
-          if ! grep -q "gradle:7.4.2" build.gradle; then
-            sed -i -E "s/com.android.tools.build:gradle/com.android.tools.build:gradle:7.4.2/" build.gradle
-          fi
+          # 不修改 AGP 版本，使用 Expo 生成的版本
           
           echo "=== 修改后的配置 ==="
           echo "Gradle 版本:"
           cat gradle/wrapper/gradle-wrapper.properties
           echo ""
           echo "AGP 版本:"
-          grep "com.android.tools.build:gradle" build.gradle
+          grep "com.android.tools.build:gradle" build.gradle || echo "未找到 AGP 配置"
         
       - name: Build APK with Gradle
         id: build
