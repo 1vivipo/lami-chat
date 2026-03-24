@@ -35,17 +35,6 @@ jobs:
       - name: Prebuild Android project
         run: npx expo prebuild --platform android
         
-      - name: Fix Gradle compatibility
-        run: |
-          cd android
-          
-          # 使用 Gradle 8.6（正确版本号）
-          sed -i 's/gradle-.*-all.zip/gradle-8.6-all.zip/' gradle/wrapper/gradle-wrapper.properties
-          
-          echo "=== 修改后的配置 ==="
-          echo "Gradle 版本:"
-          cat gradle/wrapper/gradle-wrapper.properties
-        
       - name: Build APK with Gradle
         id: build
         run: |
