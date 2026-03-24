@@ -39,8 +39,8 @@ jobs:
         run: |
           cd android
           
-          # 降级 Gradle 到 8.0.2
-          sed -i 's/gradle-.*-all.zip/gradle-8.0.2-all.zip/' gradle/wrapper/gradle-wrapper.properties
+          # 降级 Gradle 到 8.2（AGP 7.4.2 最低要求）
+          sed -i 's/gradle-.*-all.zip/gradle-8.2-all.zip/' gradle/wrapper/gradle-wrapper.properties
           
           # 降级 AGP 到 7.4.2
           sed -i -E "s/classpath\(['\"]com.android.tools.build:gradle:[0-9.]+['\"]\)/classpath('com.android.tools.build:gradle:7.4.2')/" build.gradle
