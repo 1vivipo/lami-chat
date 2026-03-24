@@ -1,65 +1,93 @@
 #!/bin/bash
-# GitHub Actions 构建日志读取脚本
-# 用法: ./get-build-log.sh <run_id> [step_name]
 
-REPO="1vivipo/lami-chat"
-TOKEN="7rlnN8DnBXZ57TftXkOibKDy8mQRZLvrmW13-8BF"
+# 自动获取 GitHub Actions 构建日志的脚本
+# 用法: ./scripts/get-build-log.sh [run_id]
 
+REPO_OWNER="1vivipo"
+REPO_NAME="lami-chat"
+GITHUB_TOKEN="${GITHUB_TOKEN:-}"
+
+# 如果没有提供 run_id，获取最新的运行
 if [ -z "$1" ]; then
-    echo "获取最新的构建..."
-    RUN_ID=$(curl -s -H "Authorization: token $TOKEN" \
-        "https://api.github.com/repos/$REPO/actions/runs?per_page=1" | \
-        jq -r '.workflow_runs[0].id')
+  echo "获取最新的构建运行..."
+  RUN_ID=$(curl -s "https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/actions/runs?per_page=1" | \
+    python3 -c "import sys,json; d=json.load(sys.stdin); print(d['workflow_runs'][0]['id'] if d['workflow_runs'] else '')")
 else
-    RUN_ID=$1
+  RUN_ID=$1
 fi
 
-echo "Run ID: $RUN_ID"
+if [ -z "$RUN_ID" ]; then
+  echo "未找到构建运行"
+  exit 1
+fi
 
-# 获取 job 信息
-JOB_URL="https://api.github.com/repos/$REPO/actions/runs/$RUN_ID/jobs"
-echo "获取 job 信息: $JOB_URL"
+echo "构建运行 ID: $RUN_ID"
 
-JOBS=$(curl -s -H "Authorization: token $TOKEN" "$JOB_URL")
-
-# 找到失败的步骤
+# 获取运行状态
 echo ""
-echo "=== 步骤状态 ==="
-echo "$JOBS" | jq -r '.jobs[0].steps[] | "\(.name): \(.conclusion)"'
+echo "=== 构建状态 ==="
+curl -s "https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/actions/runs/${RUN_ID}" | \
+  python3 -c "import sys,json; d=json.load(sys.stdin); print(f\"状态: {d['status']}\"); print(f\"结果: {d.get('conclusion', 'running')}\"); print(f\"链接: {d['html_url']}\")"
 
-# 获取失败步骤的名称
-FAILED_STEP=$(echo "$JOBS" | jq -r '.jobs[0].steps[] | select(.conclusion == "failure") | .name' | head -1)
+# 获取 Job ID
+JOB_ID=$(curl -s "https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/actions/runs/${RUN_ID}/jobs" | \
+  python3 -c "import sys,json; d=json.load(sys.stdin); print(d['jobs'][0]['id'] if d['jobs'] else '')")
 
-if [ -z "$FAILED_STEP" ]; then
-    echo ""
-    echo "没有找到失败的步骤"
-    exit 0
+if [ -z "$JOB_ID" ]; then
+  echo "未找到 Job"
+  exit 1
 fi
 
 echo ""
-echo "=== 失败的步骤: $FAILED_STEP ==="
+echo "Job ID: $JOB_ID"
 
-# 获取日志下载 URL
-LOG_URL=$(echo "$JOBS" | jq -r '.jobs[0].steps[] | select(.name == "'"$FAILED_STEP"'") | .log_url // empty')
+# 获取步骤信息
+echo ""
+echo "=== 构建步骤 ==="
+curl -s "https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/actions/jobs/${JOB_ID}" | \
+  python3 -c "
+import sys,json
+d = json.load(sys.stdin)
+for step in d.get('steps', []):
+    status = step.get('conclusion', 'running')
+    icon = '✅' if status == 'success' else '❌' if status == 'failure' else '⏳'
+    print(f\"{icon} {step['name']}: {status}\")
+"
 
-if [ -z "$LOG_URL" ]; then
-    # 尝试获取整个 job 的日志
-    JOB_ID=$(echo "$JOBS" | jq -r '.jobs[0].id')
-    LOG_URL="https://api.github.com/repos/$REPO/actions/jobs/$JOB_ID/logs"
+# 检查是否有错误 artifact
+echo ""
+echo "=== 检查错误日志 ==="
+ARTIFACTS=$(curl -s "https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/actions/runs/${RUN_ID}/artifacts")
+
+ERROR_ARTIFACT_ID=$(echo "$ARTIFACTS" | \
+  python3 -c "import sys,json; d=json.load(sys.stdin); print(next((a['id'] for a in d.get('artifacts', []) if a['name'] == 'error-log'), ''))")
+
+if [ -n "$ERROR_ARTIFACT_ID" ]; then
+  echo "找到错误日志 artifact: $ERROR_ARTIFACT_ID"
+  echo ""
+  echo "下载链接:"
+  echo "https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/actions/artifacts/${ERROR_ARTIFACT_ID}/zip"
+else
+  echo "未找到错误日志 artifact"
 fi
 
-echo "日志 URL: $LOG_URL"
-
-# 下载日志
+# 检查是否有 Issue
 echo ""
-echo "=== 下载日志 ==="
-curl -s -H "Authorization: token $TOKEN" -H "Accept: application/vnd.github.v3+json" \
-    "$LOG_URL" -o /tmp/build_log.txt
+echo "=== 检查错误 Issue ==="
+curl -s "https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/issues?labels=build-error&state=open&per_page=1" | \
+  python3 -c "
+import sys,json
+d = json.load(sys.stdin)
+if d:
+    issue = d[0]
+    print(f\"Issue #{issue['number']}: {issue['title']}\")
+    print(f\"链接: {issue['html_url']}\")
+    print()
+    print('错误内容:')
+    print(issue['body'][:2000] if len(issue['body']) > 2000 else issue['body'])
+else:
+    print('未找到错误 Issue')
+"
 
-# 显示日志中的错误
 echo ""
-echo "=== 错误信息 ==="
-grep -i -A 5 "FAILURE\|error\|failed\|exception" /tmp/build_log.txt | head -100
-
-echo ""
-echo "完整日志已保存到: /tmp/build_log.txt"
+echo "=== 完成 ==="

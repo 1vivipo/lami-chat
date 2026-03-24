@@ -47,6 +47,11 @@ export interface Conversation {
   updated_at: string;
   last_message?: Message;
   other_user?: User;
+  // 新增：未读消息数
+  unread_count?: number;
+  // 新增：草稿
+  draft?: string;
+  draft_updated_at?: string;
 }
 
 export interface ConversationParticipant {
@@ -57,15 +62,55 @@ export interface ConversationParticipant {
   joined_at: string;
 }
 
-// Message types
+// Message types - 增强版
 export interface Message {
   id: string;
   conversation_id: string;
   sender_id: string;
   content: string;
-  type: 'text' | 'image' | 'voice' | 'emoji';
+  type: 'text' | 'image' | 'voice' | 'emoji' | 'video' | 'file';
   created_at: string;
   sender?: User;
+  
+  // 新增：消息状态
+  status: 'sending' | 'sent' | 'delivered' | 'read' | 'failed';
+  
+  // 新增：已读用户列表
+  read_by?: string[];
+  
+  // 新增：撤回相关
+  is_recalled?: boolean;
+  recalled_at?: string;
+  
+  // 新增：引用回复
+  reply_to_id?: string;
+  reply_to?: Message;
+  
+  // 新增：转发标记
+  is_forwarded?: boolean;
+  forwarded_from_id?: string;
+  
+  // 多媒体相关
+  media_url?: string;
+  thumbnail_url?: string;
+  duration?: number; // 语音/视频时长（秒）
+  file_name?: string;
+  file_size?: number;
+}
+
+// 新增：输入状态
+export interface TypingStatus {
+  conversation_id: string;
+  user_id: string;
+  is_typing: boolean;
+  updated_at: string;
+}
+
+// 新增：草稿
+export interface MessageDraft {
+  conversation_id: string;
+  content: string;
+  updated_at: string;
 }
 
 // API Response types
@@ -105,4 +150,14 @@ export interface NotificationData {
   senderId?: string;
   senderName?: string;
   message?: string;
+}
+
+// 新增：消息发送状态
+export type MessageSendStatus = 'idle' | 'sending' | 'sent' | 'delivered' | 'read' | 'failed';
+
+// 新增：聊天设置
+export interface ChatSettings {
+  show_read_receipt: boolean; // 是否显示已读回执
+  show_typing_status: boolean; // 是否显示输入状态
+  save_draft: boolean; // 是否保存草稿
 }
